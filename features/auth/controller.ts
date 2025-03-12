@@ -9,6 +9,7 @@ import VerifyOtpHandler from "./verify-otp/handler";
 import ResendOtpHandler from "./resend-otp/handler";
 import RefreshTokenHandler from "./refresh-token/handler";
 import ApiResponse from "./../../application/response/response";
+import InitiateSignupOtpHandler from "./initiate-signup-otp/handler";
 import { IApiResponse } from "./../../application/response/i-response";
 
 @injectable()
@@ -20,7 +21,7 @@ export default class AuthController {
   private readonly _verifyOtpHandler: VerifyOtpHandler;
   private readonly _resendOtpHandler: ResendOtpHandler;
   private readonly _refreshTokenHandler: RefreshTokenHandler;
-
+  private readonly _initiateSignupOtpHandler: InitiateSignupOtpHandler;
   constructor(
     @inject(ApiResponse.name) apiResponse: IApiResponse,
     @inject(LoginHandler.name) loginHandler: LoginHandler,
@@ -28,7 +29,9 @@ export default class AuthController {
     @inject(LogoutHandler.name) logoutHandler: LogoutHandler,
     @inject(VerifyOtpHandler.name) verifyOtpHandler: VerifyOtpHandler,
     @inject(ResendOtpHandler.name) resendOtpHandler: ResendOtpHandler,
-    @inject(RefreshTokenHandler.name) refreshTokenHandler: RefreshTokenHandler
+    @inject(RefreshTokenHandler.name) refreshTokenHandler: RefreshTokenHandler,
+    @inject(InitiateSignupOtpHandler.name)
+    initiateSignupOtpHandler: InitiateSignupOtpHandler
   ) {
     this._apiResponse = apiResponse;
     this._loginHandler = loginHandler;
@@ -37,6 +40,7 @@ export default class AuthController {
     this._verifyOtpHandler = verifyOtpHandler;
     this._resendOtpHandler = resendOtpHandler;
     this._refreshTokenHandler = refreshTokenHandler;
+    this._initiateSignupOtpHandler = initiateSignupOtpHandler;
   }
 
   public async login(req: Request, res: Response) {
@@ -116,5 +120,15 @@ export default class AuthController {
     }
 
     return this._apiResponse.Ok(res, "OTP resent successfully", null);
+  }
+
+  public async initiateSignupOtp(req: Request, res: Response) {
+    const initiateSignupOtpResult = await this._initiateSignupOtpHandler.handle(req, res);
+    
+    if (initiateSignupOtpResult.isFailure) {
+      return this._apiResponse.BadRequest(res, initiateSignupOtpResult.errors);
+    }
+
+    return this._apiResponse.Ok(res, "OTP initiated successfully", null);
   }
 }

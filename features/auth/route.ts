@@ -39,5 +39,9 @@ export default class AuthRoute {
     this.router.post("/resend-otp", (req, res) =>
       this._authController.resendOtp(req, res)
     );
+
+    this.router.post("/initiate-signup-otp", (req, res) =>
+      this._authController.initiateSignupOtp(req, res)
+    );
   }
 }

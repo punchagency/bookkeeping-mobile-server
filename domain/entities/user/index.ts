@@ -1,12 +1,12 @@
 import { Types } from "mongoose";
 import { prop, getModelForClass, modelOptions } from "@typegoose/typegoose";
 
-enum VerificationMethod {
+export enum VerificationMethod {
   EMAIL = "EMAIL",
   PHONE = "PHONE_NUMBER",
 }
 
-enum AccountType {
+export enum AccountType {
   BUSINESS = "BUSINESS",
   PERSONAL = "PERSONAL",
 }
@@ -20,31 +20,31 @@ enum AccountType {
 class User {
   _id?: Types.ObjectId;
 
-  @prop({ required: true, select: true })
+  @prop({ required: false, select: true, default: null })
   public fullName: string;
 
-  @prop({ required: true, enum: AccountType, select: true })
+  @prop({ required: false, enum: AccountType, select: true, default: null })
   public accountType: AccountType;
 
-  @prop({ required: false, select: true })
+  @prop({ required: false, select: true, default: null })
   public companyName?: string;
 
-  @prop({ required: false, select: true })
+  @prop({ required: false, select: true, default: null })
   public companyWebsite?: string;
 
-  @prop({ required: false, select: true })
+  @prop({ required: false, select: true, default: null })
   public companyCategory?: string;
 
-  @prop({ require: false, select: true })
+  @prop({ require: false, select: true, default: null })
   public businessStructure?: string;
 
-  @prop({ required: true, unique: true, select: true })
+  @prop({ required: false, unique: true, select: true })
   public email: string;
 
-  @prop({ required: true, unique: true, select: true })
+  @prop({ required: false, unique: true, select: true })
   public phoneNumber: string;
 
-  @prop({ required: true, select: true })
+  @prop({ required: false, select: true })
   public password: string;
 
   @prop({ required: true, default: false, select: true })

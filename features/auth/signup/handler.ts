@@ -38,6 +38,8 @@ export default class SignupHandler {
   public async handle(req: Request, res: Response) {
     const values = await signupSchema.validateAsync(req.body);
 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+
     const userExists = await this._userRepository.findByEmail(values.email);
 
     if (userExists) {
