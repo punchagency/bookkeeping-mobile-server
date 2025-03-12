@@ -6,6 +6,11 @@ enum VerificationMethod {
   PHONE = "PHONE_NUMBER",
 }
 
+enum AccountType {
+  BUSINESS = "BUSINESS",
+  PERSONAL = "PERSONAL",
+}
+
 @modelOptions({
   schemaOptions: {
     timestamps: true,
@@ -17,6 +22,21 @@ class User {
 
   @prop({ required: true, select: true })
   public fullName: string;
+
+  @prop({ required: true, enum: AccountType, select: true })
+  public accountType: AccountType;
+
+  @prop({ required: false, select: true })
+  public companyName?: string;
+
+  @prop({ required: false, select: true })
+  public companyWebsite?: string;
+
+  @prop({ required: false, select: true })
+  public companyCategory?: string;
+
+  @prop({ require: false, select: true })
+  public businessStructure?: string;
 
   @prop({ required: true, unique: true, select: true })
   public email: string;
