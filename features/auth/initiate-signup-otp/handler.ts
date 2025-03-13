@@ -12,9 +12,10 @@ import {
   initiateSignupOtpSchema,
   IInitiateSignupOtpDto,
 } from "./initiate-otp.dto";
-import { User, VerificationMethod } from "./../../../domain/entities/user";
 import { TokenType } from "../../../domain/entities/token";
+import { validateContactInput } from "../../../utils";
 import { AuthTokenUtils } from "./../../../utils/auth-token";
+import { User, VerificationMethod } from "./../../../domain/entities/user";
 import { UserRepository } from "./../../../infrastructure/repositories/user/user-repository";
 import { TokenRepository } from "./../../../infrastructure/repositories/token/token-repository";
 
@@ -50,6 +51,25 @@ export default class InitiateSignupOtpHandler {
 
     let user: User | null = null;
 
+    const { isValid, type: validatedType } = validateContactInput(details);
+
+    if (!isValid) {
+      if (validatedType === VerificationMethod.EMAIL) {
+        return Result.fail("Invalid email");
+      } else if (validatedType === VerificationMethod.PHONE) {
+        return Result.fail("Invalid phone number");
+      }
+    }
+
+    if (type === "EMAIL" && validatedType === VerificationMethod.PHONE) {
+      return Result.fail("Invalid email");
+    } else if (
+      type === "PHONE_NUMBER" &&
+      validatedType === VerificationMethod.EMAIL
+    ) {
+      return Result.fail("Invalid phone number");
+    }
+
     switch (type) {
       case "EMAIL":
         user = await this._userRepository.findByEmail(details);
@@ -71,17 +91,15 @@ export default class InitiateSignupOtpHandler {
           email: details,
           accountType: null,
           fullName: null,
-          phoneNumber: null,
           password: null,
           isVerified: false,
           isEmailVerified: false,
           isPhoneVerified: false,
           mxUsers: [],
           verificationMethod: VerificationMethod.EMAIL,
-        });
+        } as any);
       } else if (type === "PHONE_NUMBER") {
         createdUser = await this._userRepository.create({
-          email: null,
           phoneNumber: details,
           accountType: null,
           fullName: null,
@@ -91,7 +109,7 @@ export default class InitiateSignupOtpHandler {
           isPhoneVerified: false,
           mxUsers: [],
           verificationMethod: VerificationMethod.PHONE,
-        });
+        } as any);
       } else {
         return Result.fail("Invalid account type");
       }

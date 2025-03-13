@@ -123,12 +123,22 @@ export default class AuthController {
   }
 
   public async initiateSignupOtp(req: Request, res: Response) {
-    const initiateSignupOtpResult = await this._initiateSignupOtpHandler.handle(req, res);
-    
+    const initiateSignupOtpResult = await this._initiateSignupOtpHandler.handle(
+      req,
+      res
+    );
+
     if (initiateSignupOtpResult.isFailure) {
-      return this._apiResponse.BadRequest(res, initiateSignupOtpResult.errors);
+      return this._apiResponse.BadRequest(
+        res,
+        initiateSignupOtpResult.errors.map((error) => error.message)
+      );
     }
 
-    return this._apiResponse.Ok(res, "OTP initiated successfully", null);
+    return this._apiResponse.Ok(
+      res,
+      initiateSignupOtpResult.value.toString(),
+      null
+    );
   }
 }

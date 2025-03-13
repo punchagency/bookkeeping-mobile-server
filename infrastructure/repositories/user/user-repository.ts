@@ -42,7 +42,7 @@ export class UserRepository
   }
 
   async findByPhoneNumber(phoneNumber: string): Promise<User | null> {
-    return await UserModel.findOne({ phoneNumber: `+${phoneNumber}` })
+    return await UserModel.findOne({ phoneNumber })
       .select("-password +verificationMethod")
       .exec();
   }

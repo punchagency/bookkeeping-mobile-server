@@ -1,6 +1,7 @@
 import logger from "./logger";
 import corsOptions from "./cors-options";
 import { EnvConfiguration } from "./env-config";
+import { validateContactInput } from "./validators";
 import {
   getOpenaiFinanceTools,
   getOpenaiFinanceAgentPrompt,
@@ -13,6 +14,7 @@ export {
   corsOptions,
   EnvConfiguration,
   connectToDatabase,
+  validateContactInput,
   getOpenaiFinanceTools,
   disconnectFromDatabase,
   getOpenaiFinanceAgentPrompt,

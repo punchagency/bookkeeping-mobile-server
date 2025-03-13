@@ -36,11 +36,15 @@ initiateSignupOtpEventEmitter.on(
       const smsBody = `Your OTP is ${otp}`;
 
       if (channel === "EMAIL") {
-        await sendgridService.sendEmail(
-          email,
-          "Verify Your Account - Bookkeeping",
-          emailBody
-        );
+        try {
+          await sendgridService.sendEmail(
+            email,
+            "Verify Your Account - Bookkeeping",
+            emailBody
+          );
+        } catch (error: any) {
+          logger("Error sending email", error);
+        }
       } else {
         await twilioService.client.messages.create({
           body: smsBody,
