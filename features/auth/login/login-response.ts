@@ -6,7 +6,8 @@ export interface ILoginResponse {
   user: {
       _id: Types.ObjectId;
     email: string;
-    fullName: string;
+    firstName: string;
+    lastName: string;
     avatar: string;
   };
 }

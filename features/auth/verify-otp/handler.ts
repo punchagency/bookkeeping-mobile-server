@@ -1,23 +1,28 @@
+import dayjs from "dayjs";
 import { Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
 import { verifyOtpSchema } from "./verify-otp.dto";
 import { TokenType } from "../../../domain/entities/token";
+import { AuthTokenUtils } from "../../../utils/auth-token";
 import { UserRepository } from "./../../../infrastructure/repositories/user/user-repository";
 import { TokenRepository } from "./../../../infrastructure/repositories/token/token-repository";
 
 @injectable()
 export default class VerifyOtpHandler {
+  private readonly _authTokenUtils: AuthTokenUtils;
   private readonly _userRepository: UserRepository;
   private readonly _tokenRepository: TokenRepository;
 
   constructor(
     @inject(TokenRepository.name) tokenRepository,
-    @inject(UserRepository.name) userRepository
+    @inject(UserRepository.name) userRepository,
+    @inject(AuthTokenUtils.name) authTokenUtils: AuthTokenUtils
   ) {
     this._userRepository = userRepository;
     this._tokenRepository = tokenRepository;
+    this._authTokenUtils = authTokenUtils;
   }
 
   public async handle(req: Request, res: Response) {
@@ -64,6 +69,15 @@ export default class VerifyOtpHandler {
     }
     await this._tokenRepository.delete(otpExists.id);
 
-    return Result.ok("OTP verified successfully");
+    const signupFlowToken = await this._tokenRepository.create({
+      userId: user._id,
+      token: this._authTokenUtils.generateTempSignupFlowToken(),
+      type: TokenType.SIGNUP_FLOW_TOKEN,
+      expiresAt: dayjs().add(7, "days").toDate(),
+    });
+
+    return Result.ok({
+      signupFlowToken: signupFlowToken.token,
+    });
   }
 }

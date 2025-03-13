@@ -1,7 +1,8 @@
 export const SIGNUP_EVENT = "SIGNUP_EVENT";
 
 export interface ISignupEvent {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phoneNumber: string;
   otp: string;

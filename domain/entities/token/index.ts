@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 enum TokenType {
   REFRESH_TOKEN = "refreshToken",
   OTP = "otp",
+  SIGNUP_FLOW_TOKEN = "signupFlowToken",
 }
 
 @modelOptions({

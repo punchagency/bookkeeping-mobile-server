@@ -88,7 +88,8 @@ export default class ResendOtpHandler {
     });
 
     resendOtpEventEmitter.emit(RESEND_OTP_EVENT, {
-      fullName: existingUser.fullName,
+      firstName: existingUser.firstName,
+      lastName: existingUser.lastName,
       email: existingUser.email,
       phoneNumber: existingUser.phoneNumber,
       otp: createdOtpToken.token,

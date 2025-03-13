@@ -34,7 +34,8 @@ export default class UpdateSettingsHandler {
     logger(`Updating settings for user ${currentUser._id}`);
 
     const updatedUser = await this._userRepository.update(currentUser._id, {
-      fullName,
+      firstName: values.firstName,
+      lastName: values.lastName,
     });
 
     const settings = await this._settingsRepository.findSettingsByUserId(
@@ -55,7 +56,8 @@ export default class UpdateSettingsHandler {
 
     const response = {
       voice: updatedSettings.voice,
-      fullName: updatedUser.fullName,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
     };
 
     return Result.ok(response);

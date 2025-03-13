@@ -36,9 +36,10 @@ export default class GetSettingsHandler {
 
     return Result.ok({
       voice: settings?.voice || defaultVoice,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
-      avatar: `https://api.dicebear.com/9.x/micah/svg?seed=${user.fullName}`,
+      avatar: `https://api.dicebear.com/9.x/micah/svg?seed=${user.firstName}`,
     });
   }
 }

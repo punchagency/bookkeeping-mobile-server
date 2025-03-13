@@ -49,4 +49,12 @@ export class TokenRepository
       type: TokenType.OTP,
     }).exec();
   }
+
+
+  async findByToken(token: string, type: Types.ObjectId) {
+    return await TokenModel.findOne({
+      token,
+      type
+    }).exec()
+  }
 }

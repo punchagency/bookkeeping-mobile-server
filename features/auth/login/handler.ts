@@ -75,8 +75,9 @@ export default class LoginHandler {
         user: {
           _id: user._id,
           email: user.email,
-          fullName: user.fullName,
-          avatar: `https://api.dicebear.com/9.x/micah/svg?seed=${user.fullName}`,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatar: `https://api.dicebear.com/9.x/micah/svg?seed=${user.firstName}`,
         },
       });
     } catch (error: any) {

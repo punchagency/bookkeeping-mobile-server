@@ -21,7 +21,10 @@ class User {
   _id?: Types.ObjectId;
 
   @prop({ required: false, select: true, default: null })
-  public fullName: string;
+  public firstName: string;
+
+  @prop({ required: false, select: true, default: null })
+  public lastName: string;
 
   @prop({ required: false, enum: AccountType, select: true, default: null })
   public accountType: AccountType;
@@ -58,6 +61,9 @@ class User {
 
   @prop({ required: false, default: false, select: true })
   public isPhoneVerified: boolean;
+
+  @prop({ required: false, select: true, default: null })
+  public financialGoal: string;
 
   @prop({ type: () => [Object], default: [], select: true })
   public mxUsers: Array<{

@@ -102,10 +102,17 @@ export default class AuthController {
     const verifyOtpResult = await this._verifyOtpHandler.handle(req, res);
 
     if (verifyOtpResult.isFailure) {
-      return this._apiResponse.BadRequest(res, verifyOtpResult.errors);
+      return this._apiResponse.BadRequest(
+        res,
+        verifyOtpResult.errors.map((error) => error.message)
+      );
     }
 
-    return this._apiResponse.Ok(res, "Account verified successfully", null);
+    return this._apiResponse.Ok(
+      res,
+      "Account verified successfully",
+      verifyOtpResult.value
+    );
   }
 
   public async resendOtp(req: Request, res: Response) {
@@ -116,7 +123,10 @@ export default class AuthController {
         return this._apiResponse.NotFound(res, "User not found", null);
       }
 
-      return this._apiResponse.BadRequest(res, resendOtpResult.errors);
+      return this._apiResponse.BadRequest(
+        res,
+        resendOtpResult.errors.map((error) => error.message)
+      );
     }
 
     return this._apiResponse.Ok(res, "OTP resent successfully", null);

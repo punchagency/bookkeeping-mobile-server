@@ -1,7 +1,8 @@
 import Joi from "joi";
 
 export const updateSettingsSchema = Joi.object({
-  fullName: Joi.string().optional(),
+  firstName: Joi.string().optional(),
+  lastName: Joi.string().optional(),
   voice: Joi.string()
     .optional()
     .allow(
@@ -17,6 +18,7 @@ export const updateSettingsSchema = Joi.object({
 });
 
 export interface IUpdateSettings {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   voice: string;
 }

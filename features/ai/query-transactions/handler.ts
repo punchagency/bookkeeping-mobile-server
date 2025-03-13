@@ -139,7 +139,7 @@ export default class QueryTransactionHandler {
     let markdownTransactions = null;
 
     if (!cachedTransactions) {
-      logger(`No cached transactions found for ${user.fullName}`);
+      logger(`No cached transactions found for ${user.firstName}`);
 
       const mxUserId = user.mxUsers[0].mxUserId;
 
@@ -310,7 +310,7 @@ export default class QueryTransactionHandler {
     const cachedTransactions = await this._redisService.get(queryCacheKey);
 
     if (!cachedTransactions) {
-      logger(`No cached custom query transactions found for ${user.fullName}`);
+      logger(`No cached custom query transactions found for ${user.firstName}`);
     }
 
     return cachedTransactions;

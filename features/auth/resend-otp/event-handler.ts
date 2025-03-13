@@ -12,12 +12,12 @@ const sendgridService = container.resolve(SendgridService);
 resendOtpEventEmitter.on(RESEND_OTP_EVENT, async (data: IResendOtpEvent) => {
   try {
     logger("Handling resend OTP event", data);
-    const { fullName, otp, email, phoneNumber, otpDeliveryMethod } = data;
+    const { firstName, lastName, otp, email, phoneNumber, otpDeliveryMethod } = data;
 
     const emailBody = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1 style="color: #333; text-align: center;">Your New OTP Code</h1>
-        <p>Hi ${fullName},</p>
+        <p>Hi ${firstName} ${lastName},</p>
         <p>You requested a new OTP code. Please use the following code to verify your account:</p>
         <div style="text-align: center; padding: 20px;">
           <h2 style="letter-spacing: 5px; font-size: 32px; color: #4F46E5;">${otp}</h2>

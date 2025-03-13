@@ -5,12 +5,11 @@ import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
 import signupSchema from "./signup.dto";
-import signupEventEmitter from "./event";
 import { User } from "./../../../domain/entities/user";
 import { AuthTokenUtils } from "./../../../utils/auth-token";
 import { TokenType } from "./../../../domain/entities/token";
 import MxClient from "../../../infrastructure/config/packages/mx";
-import { ISignupErrorContext, ISignupEvent, SIGNUP_EVENT } from "./event.dto";
+import { ISignupErrorContext } from "./event.dto";
 import { UserRepository } from "../../../infrastructure/repositories/user/user-repository";
 import { IUserRepository } from "../../../infrastructure/repositories/user/i-user-repository";
 import { TokenRepository } from "../../../infrastructure/repositories/token/token-repository";
@@ -38,34 +37,62 @@ export default class SignupHandler {
   public async handle(req: Request, res: Response) {
     const values = await signupSchema.validateAsync(req.body);
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+    const signupToken = await this._tokenRepository.findByToken(
+      values.signupFlowToken,
+      TokenType.SIGNUP_FLOW_TOKEN
+    );
 
-    const userExists = await this._userRepository.findByEmail(values.email);
-
-    if (userExists) {
+    if (!signupToken) {
       return Result.fail<IError, ISignupErrorContext>([
-        { message: "User already exists" },
+        { message: "Invalid or expired signup flow token" },
       ]).withMetadata({
         context: {
-          statusCode: 409,
+          statusCode: 400,
+        },
+      });
+    }
+
+    if (signupToken.expiresAt < new Date()) {
+      return Result.fail<IError, ISignupErrorContext>([
+        { message: "Signup flow token expired" },
+      ]).withMetadata({
+        context: {
+          statusCode: 400,
         },
       });
     }
 
     const hashedPassword = await bcrypt.hash(values.password, 10);
 
-    const otpDeliveryMethod =
-      values.otpDeliveryMethod === "EMAIL" ? "email" : "phone";
+    const {
+      accountType,
+      companyName,
+      companyWebsite,
+      companyCategory,
+      businessStructure,
+    } = values;
+
+    const detailsToEdit = {
+      accountType,
+      companyName,
+      companyWebsite,
+      companyCategory,
+      businessStructure,
+    };
 
     const userToCreate: Partial<User> = {
       email: values.email,
       phoneNumber: values.phoneNumber,
       password: hashedPassword,
-      fullName: values.fullName,
+      firstName: values.firstName,
+      lastName: values.lastName,
       verificationMethod: values.otpDeliveryMethod,
     };
 
-    const user = await this._userRepository.create(userToCreate as User);
+    const updatedUser = await this._userRepository.update(
+      signupToken.userId,
+      detailsToEdit
+    );
 
     /**
      * Now, we can create the MX user
@@ -74,7 +101,7 @@ export default class SignupHandler {
     const dataToSend = {
       user: {
         email: values.email,
-        id: user._id.toString(),
+        id: signupToken.userId.toString(),
       },
     };
 
@@ -93,9 +120,9 @@ export default class SignupHandler {
         createdAt: new Date(),
       };
 
-      await this._userRepository.update(user._id, {
+      await this._userRepository.update(signupToken.userId, {
         mxUsers: [
-          ...(user.mxUsers || []),
+          ...(updatedUser.mxUsers || []),
           {
             ...mxUserDetails,
             isDisabled: false,
@@ -104,25 +131,13 @@ export default class SignupHandler {
       });
 
       const createdOtpToken = await this._tokenRepository.create({
-        userId: user._id,
+        userId: signupToken.userId,
         expiresAt: dayjs().add(1, "hour").toDate(),
         token: this._authTokenUtils.generateOtpToken(),
         type: TokenType.OTP,
       });
 
-      const signupEvent: ISignupEvent = {
-        fullName: user.fullName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        otp: createdOtpToken.token,
-        otpDeliveryMethod: values.otpDeliveryMethod as "EMAIL" | "PHONE_NUMBER",
-      };
-
-      signupEventEmitter.emit(SIGNUP_EVENT, signupEvent);
-
-      return Result.ok(
-        `Account created. Please check your ${otpDeliveryMethod} for the OTP.`
-      );
+      return Result.ok(`Account created successfully`);
     } catch (error: any) {
       return Result.fail<IError, ISignupErrorContext>([
         { message: "Error creating mx user" },

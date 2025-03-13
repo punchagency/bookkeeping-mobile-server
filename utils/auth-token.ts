@@ -2,6 +2,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { Types } from "mongoose";
 import { Response } from "express";
+import { v4 as uuidv4 } from "uuid";
 import { container, injectable, inject } from "tsyringe";
 
 import { EnvConfiguration } from "./env-config";
@@ -63,6 +64,10 @@ export class AuthTokenUtils {
     const number = buffer.readUintBE(0, 3) % 1000000;
 
     return number.toString().padStart(6, "0");
+  }
+
+  generateTempSignupFlowToken() {
+    return uuidv4();
   }
 }
 
