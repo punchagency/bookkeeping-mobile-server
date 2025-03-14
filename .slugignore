@@ -1,0 +1,15 @@
+node_modules
+tests
+docs
+*.log
+dist
+.git
+.husky
+.DS_Store
+*.test.*
+coverage
+.env*
+README.md
+tsconfig.json
+nodemon.json
+.gitignore
