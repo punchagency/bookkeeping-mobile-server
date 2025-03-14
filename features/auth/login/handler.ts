@@ -33,7 +33,7 @@ export default class LoginHandler {
     try {
       const values = await loginSchema.validateAsync(req.body);
 
-      const user = await this._userRepository.findByEmail(values.email);
+      const user = await this._userRepository.findByEmailOrPhoneNumber(values.email, values.phoneNumber);
       if (!user) {
         return Result.fail([{ message: "Invalid credentials" }]);
       }

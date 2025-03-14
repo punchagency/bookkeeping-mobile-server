@@ -46,4 +46,13 @@ export class UserRepository
       .select("-password +verificationMethod")
       .exec();
   }
+
+
+  async findByEmailOrPhoneNumber(email: string, phoneNumber: string): Promise<User | null> {
+    return await UserModel.findOne({
+      $or: [{ email }, { phoneNumber }],
+    })
+      .select("+password +verificationMethod")
+      .exec();
+  }
 }

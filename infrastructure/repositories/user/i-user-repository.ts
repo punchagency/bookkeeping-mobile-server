@@ -6,4 +6,8 @@ export interface IUserRepository extends IRepository<User> {
   findByPhoneNumber(phoneNumber: string): Promise<User | null>;
   updatePassword(userId: string, hashedPassword: string): Promise<User | null>;
   findQualifiedUsers(): Promise<User[]>;
+  findByEmailOrPhoneNumber(
+    email: string,
+    phoneNumber: string
+  ): Promise<User | null>;
 }
