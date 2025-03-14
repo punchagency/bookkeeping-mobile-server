@@ -12,7 +12,7 @@ export default class RedisService {
     @inject(EnvConfiguration.name) envConfiguration: EnvConfiguration
   ) {
     this._envConfiguration = envConfiguration;
-    this.client = new Redis({
+    this.client = this._envConfiguration.IS_PRODUCTION ? new Redis(this._envConfiguration.REDIS_HOST) : new Redis({
       port: this._envConfiguration.REDIS_PORT,
       host: this._envConfiguration.REDIS_HOST,
     });
