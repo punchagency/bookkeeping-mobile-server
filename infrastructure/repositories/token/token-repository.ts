@@ -51,10 +51,10 @@ export class TokenRepository
   }
 
 
-  async findByToken(token: string, type: Types.ObjectId) {
+  async findByToken(token: string, type: TokenType): Promise<Token | null> {
     return await TokenModel.findOne({
       token,
       type
-    }).exec()
+    }).exec();
   }
 }

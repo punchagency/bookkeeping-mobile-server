@@ -1,15 +1,12 @@
-import dayjs from "dayjs";
 import bcrypt from "bcrypt";
 import { IError, Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
 import signupSchema from "./signup.dto";
-import { User } from "./../../../domain/entities/user";
-import { AuthTokenUtils } from "./../../../utils/auth-token";
+import { ISignupErrorContext } from "./event.dto";
 import { TokenType } from "./../../../domain/entities/token";
 import MxClient from "../../../infrastructure/config/packages/mx";
-import { ISignupErrorContext } from "./event.dto";
 import { UserRepository } from "../../../infrastructure/repositories/user/user-repository";
 import { IUserRepository } from "../../../infrastructure/repositories/user/i-user-repository";
 import { TokenRepository } from "../../../infrastructure/repositories/token/token-repository";
@@ -18,19 +15,16 @@ import { ITokenRepository } from "../../../infrastructure/repositories/token/i-t
 @injectable()
 export default class SignupHandler {
   private readonly _mxClient: MxClient;
-  private readonly _authTokenUtils: AuthTokenUtils;
   private readonly _userRepository: IUserRepository;
   private readonly _tokenRepository: ITokenRepository;
 
   constructor(
     @inject(MxClient.name) mxClient: MxClient,
-    @inject(AuthTokenUtils.name) authTokenUtils: AuthTokenUtils,
     @inject(UserRepository.name) userRepository: IUserRepository,
     @inject(TokenRepository.name) tokenRepository: ITokenRepository
   ) {
     this._mxClient = mxClient;
     this._userRepository = userRepository;
-    this._authTokenUtils = authTokenUtils;
     this._tokenRepository = tokenRepository;
   }
 
@@ -70,23 +64,21 @@ export default class SignupHandler {
       companyWebsite,
       companyCategory,
       businessStructure,
+      financialGoal,
+      firstName,
+      lastName,
     } = values;
 
     const detailsToEdit = {
+      password: hashedPassword,
+      firstName,
+      lastName,
       accountType,
       companyName,
       companyWebsite,
       companyCategory,
       businessStructure,
-    };
-
-    const userToCreate: Partial<User> = {
-      email: values.email,
-      phoneNumber: values.phoneNumber,
-      password: hashedPassword,
-      firstName: values.firstName,
-      lastName: values.lastName,
-      verificationMethod: values.otpDeliveryMethod,
+      financialGoal,
     };
 
     const updatedUser = await this._userRepository.update(
@@ -128,13 +120,6 @@ export default class SignupHandler {
             isDisabled: false,
           },
         ],
-      });
-
-      const createdOtpToken = await this._tokenRepository.create({
-        userId: signupToken.userId,
-        expiresAt: dayjs().add(1, "hour").toDate(),
-        token: this._authTokenUtils.generateOtpToken(),
-        type: TokenType.OTP,
       });
 
       return Result.ok(`Account created successfully`);
