@@ -9,7 +9,6 @@ docs
 coverage
 .env*
 README.md
-tsconfig.json
 nodemon.json
 .gitignore
 *.md
