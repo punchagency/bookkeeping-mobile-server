@@ -2,7 +2,6 @@ node_modules
 tests
 docs
 *.log
-dist
 .git
 .husky
 .DS_Store
