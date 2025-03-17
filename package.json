@@ -3,7 +3,7 @@
   "description": "Mx project backend api",
   "main": "./dist/index.js",
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

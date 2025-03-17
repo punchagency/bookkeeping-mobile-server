@@ -33,5 +33,5 @@
     "outDir": "./dist",
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["**/*.ts", "setup.js"]
+  "include": ["**/*.ts"]
 }
