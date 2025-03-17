@@ -24,7 +24,7 @@ export default class AuthRoute {
       this._authController.signup(req, res)
     );
 
-    this.router.post("/refresh-token", (req, res) =>
+    this.router.post("/refresh-access-token", (req, res) =>
       this._authController.refreshToken(req, res)
     );
 

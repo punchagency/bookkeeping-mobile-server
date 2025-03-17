@@ -28,9 +28,7 @@
     "build": "tsc",
     "start": "DEBUG=mx-backend node ./dist/index.js",
     "dev": "DEBUG=mx-backend nodemon",
-    "seed": "DEBUG=mx-backend ts-node ./infrastructure/persistence/seeders/user/index.ts",
-    "prepare": "husky",
-    "heroku-postbuild": "npm run build"
+    "seed": "DEBUG=mx-backend ts-node ./infrastructure/persistence/seeders/user/index.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.2.1",

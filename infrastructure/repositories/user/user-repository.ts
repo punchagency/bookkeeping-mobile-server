@@ -43,16 +43,18 @@ export class UserRepository
 
   async findByPhoneNumber(phoneNumber: string): Promise<User | null> {
     return await UserModel.findOne({ phoneNumber })
-      .select("-password +verificationMethod")
+      .select("+password +verificationMethod")
       .exec();
   }
 
-
-  async findByEmailOrPhoneNumber(email: string, phoneNumber: string): Promise<User | null> {
-    return await UserModel.findOne({
-      $or: [{ email }, { phoneNumber }],
-    })
-      .select("+password +verificationMethod")
-      .exec();
+  async findByEmailOrPhoneNumber(
+    details: string,
+    type: "EMAIL" | "PHONE_NUMBER"
+  ): Promise<User | null> {
+    if (type === "EMAIL") {
+      return this.findByEmail(details);
+    } else if (type === "PHONE_NUMBER") {
+      return this.findByPhoneNumber(details);
+    }
   }
 }

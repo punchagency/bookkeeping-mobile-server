@@ -7,7 +7,7 @@ import SignupHandler from "./signup/handler";
 import LogoutHandler from "./logout/handler";
 import VerifyOtpHandler from "./verify-otp/handler";
 import ResendOtpHandler from "./resend-otp/handler";
-import RefreshTokenHandler from "./refresh-token/handler";
+import RefreshTokenHandler from "./refresh-access-token/handler";
 import ApiResponse from "./../../application/response/response";
 import InitiateSignupOtpHandler from "./initiate-signup-otp/handler";
 import { IApiResponse } from "./../../application/response/i-response";

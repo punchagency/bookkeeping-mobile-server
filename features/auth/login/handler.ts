@@ -7,9 +7,10 @@ import loginSchema from "./login.dto";
 import { ILoginResponse } from "./login-response";
 import { TokenType } from "../../../domain/entities/token";
 import { AuthTokenUtils } from "../../../utils/auth-token";
+import { logger, validateContactInput } from "../../../utils";
+import { VerificationMethod } from "./../../../domain/entities/user";
 import { UserRepository } from "../../../infrastructure/repositories/user/user-repository";
 import { TokenRepository } from "../../../infrastructure/repositories/token/token-repository";
-import { logger } from "../../../utils";
 
 @injectable()
 export default class LoginHandler {
@@ -33,7 +34,36 @@ export default class LoginHandler {
     try {
       const values = await loginSchema.validateAsync(req.body);
 
-      const user = await this._userRepository.findByEmailOrPhoneNumber(values.email, values.phoneNumber);
+      const { isValid, type } = validateContactInput(values.details);
+
+      if (!isValid) {
+        switch (type) {
+          case VerificationMethod.EMAIL:
+            return Result.fail([{ message: "Invalid email" }]);
+          case VerificationMethod.PHONE:
+            return Result.fail([{ message: "Invalid phone number" }]);
+          default:
+            return Result.fail([
+              {
+                message:
+                  "Invalid details, please enter a valid phone number or an email address",
+              },
+            ]);
+        }
+      }
+
+      if (values.type === "EMAIL" && type !== VerificationMethod.EMAIL) {
+        return Result.fail([{ message: "Invalid email" }]);
+      }
+
+      if (values.type === "PHONE_NUMBER" && type !== VerificationMethod.PHONE) {
+        return Result.fail([{ message: "Invalid phone number" }]);
+      }
+
+      const user = await this._userRepository.findByEmailOrPhoneNumber(
+        values.details,
+        values.type
+      );
       if (!user) {
         return Result.fail([{ message: "Invalid credentials" }]);
       }
@@ -42,6 +72,7 @@ export default class LoginHandler {
         values.password,
         user.password
       );
+
       if (!isPasswordValid) {
         return Result.fail([{ message: "Invalid credentials" }]);
       }
@@ -70,8 +101,6 @@ export default class LoginHandler {
       this._authTokenUtils.setRefreshTokenCookie(res, refreshToken);
 
       return Result.ok<ILoginResponse>({
-        accessToken,
-        refreshToken,
         user: {
           _id: user._id,
           email: user.email,
@@ -79,6 +108,7 @@ export default class LoginHandler {
           lastName: user.lastName,
           avatar: `https://api.dicebear.com/9.x/micah/svg?seed=${user.firstName}`,
         },
+        accessToken,
       });
     } catch (error: any) {
       logger(error);

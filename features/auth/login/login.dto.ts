@@ -1,9 +1,9 @@
 import Joi from "joi";
 
 const loginSchema = Joi.object({
-  email: Joi.string().email(),
-  phoneNumber: Joi.string(),
+  details: Joi.string().required(),
   password: Joi.string().required(),
-}).xor("email", "phoneNumber");
+  type: Joi.string().valid("EMAIL", "PHONE_NUMBER").required(),
+});
 
 export default loginSchema;
