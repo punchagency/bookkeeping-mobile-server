@@ -7,6 +7,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "3.0.0",
     "@types/bun": "latest",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
@@ -37,7 +38,6 @@
     "@typegoose/typegoose": "^12.10.1",
     "ai": "^4.1.54",
     "axios": "^1.7.9",
-    "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
     "bullmq": "^5.41.7",

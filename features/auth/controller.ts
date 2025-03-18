@@ -7,8 +7,10 @@ import SignupHandler from "./signup/handler";
 import LogoutHandler from "./logout/handler";
 import VerifyOtpHandler from "./verify-otp/handler";
 import ResendOtpHandler from "./resend-otp/handler";
-import RefreshTokenHandler from "./refresh-access-token/handler";
+import ResetPasswordHandler from "./reset-password/handler";
+import ForgotPasswordHandler from "./forgot-password/handler";
 import ApiResponse from "./../../application/response/response";
+import RefreshTokenHandler from "./refresh-access-token/handler";
 import InitiateSignupOtpHandler from "./initiate-signup-otp/handler";
 import { IApiResponse } from "./../../application/response/i-response";
 
@@ -21,6 +23,8 @@ export default class AuthController {
   private readonly _verifyOtpHandler: VerifyOtpHandler;
   private readonly _resendOtpHandler: ResendOtpHandler;
   private readonly _refreshTokenHandler: RefreshTokenHandler;
+  private readonly _resetPasswordHandler: ResetPasswordHandler;
+  private readonly _forgotPasswordHandler: ForgotPasswordHandler;
   private readonly _initiateSignupOtpHandler: InitiateSignupOtpHandler;
   constructor(
     @inject(ApiResponse.name) apiResponse: IApiResponse,
@@ -31,7 +35,11 @@ export default class AuthController {
     @inject(ResendOtpHandler.name) resendOtpHandler: ResendOtpHandler,
     @inject(RefreshTokenHandler.name) refreshTokenHandler: RefreshTokenHandler,
     @inject(InitiateSignupOtpHandler.name)
-    initiateSignupOtpHandler: InitiateSignupOtpHandler
+    initiateSignupOtpHandler: InitiateSignupOtpHandler,
+    @inject(ForgotPasswordHandler.name)
+    forgotPasswordHandler: ForgotPasswordHandler,
+    @inject(ResetPasswordHandler.name)
+    resetPasswordHandler: ResetPasswordHandler
   ) {
     this._apiResponse = apiResponse;
     this._loginHandler = loginHandler;
@@ -40,6 +48,8 @@ export default class AuthController {
     this._verifyOtpHandler = verifyOtpHandler;
     this._resendOtpHandler = resendOtpHandler;
     this._refreshTokenHandler = refreshTokenHandler;
+    this._resetPasswordHandler = resetPasswordHandler;
+    this._forgotPasswordHandler = forgotPasswordHandler;
     this._initiateSignupOtpHandler = initiateSignupOtpHandler;
   }
 
@@ -150,5 +160,64 @@ export default class AuthController {
       initiateSignupOtpResult.value.toString(),
       null
     );
+  }
+
+  public async forgotPassword(req: Request, res: Response) {
+    const forgotPasswordResult = await this._forgotPasswordHandler.handle(
+      req,
+      res
+    );
+
+    if (forgotPasswordResult.isFailure) {
+      const statusCode = forgotPasswordResult.metadata.context.statusCode;
+
+      switch (statusCode) {
+        case 404:
+          return this._apiResponse.NotFound(
+            res,
+            forgotPasswordResult.errors[0].message,
+            null
+          );
+
+        default:
+          return this._apiResponse.BadRequest(
+            res,
+            forgotPasswordResult.errors.map((error) => error.message)
+          );
+      }
+    }
+
+    return this._apiResponse.Ok(
+      res,
+      "A password reset OTP has been sent successfully",
+      null
+    );
+  }
+
+  public async resetPassword(req: Request, res: Response) {
+    const resetPasswordResult = await this._resetPasswordHandler.handle(
+      req,
+      res
+    );
+
+    if (resetPasswordResult.isFailure) {
+      const statusCode = resetPasswordResult.metadata?.context?.statusCode;
+
+      switch (statusCode) {
+        case 404:
+          return this._apiResponse.NotFound(
+            res,
+            resetPasswordResult.errors[0].message,
+            null
+          );
+        default:
+          return this._apiResponse.BadRequest(
+            res,
+            resetPasswordResult.errors.map((error) => error.message)
+          );
+      }
+    }
+
+    return this._apiResponse.Ok(res, "Password reset successfully", null);
   }
 }

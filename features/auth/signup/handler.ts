@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { IError, Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
@@ -121,6 +121,11 @@ export default class SignupHandler {
           },
         ],
       });
+
+      await this._tokenRepository.deleteByUserId(
+        signupToken.userId,
+        TokenType.SIGNUP_FLOW_TOKEN
+      );
 
       return Result.ok(`Account created successfully`);
     } catch (error: any) {

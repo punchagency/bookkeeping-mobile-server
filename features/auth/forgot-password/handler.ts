@@ -4,13 +4,13 @@ import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
 import forgotPasswordEventEmitter from "./event";
-import { AuthTokenUtils } from "./../../../utils";
 import { FORGOT_PASSWORD_EVENT } from "./event.dto";
+import { AuthTokenUtils, logger } from "./../../../utils";
 import { forgotPasswordSchema } from "./forgot-password.dto";
 import { TokenType } from "./../../../domain/entities/token";
-import { TokenRepository } from "infrastructure/repositories/token/token-repository";
 import { UserRepository } from "./../../../infrastructure/repositories/user/user-repository";
 import { IUserRepository } from "./../../../infrastructure/repositories/user/i-user-repository";
+import { TokenRepository } from "./../../../infrastructure/repositories/token/token-repository";
 import { ITokenRepository } from "./../../../infrastructure/repositories/token/i-token-repository";
 
 @injectable()
@@ -33,14 +33,12 @@ export default class ForgotPasswordHandler {
     const values = await forgotPasswordSchema.validateAsync(req.body);
 
     if (values.email) {
-      await this.forgotPassword(values.email, "EMAIL");
+      return await this.forgotPassword(values.email, "EMAIL");
     }
 
     if (values.phoneNumber) {
-      await this.forgotPassword(values.phoneNumber, "PHONE_NUMBER");
+      return await this.forgotPassword(values.phoneNumber, "PHONE_NUMBER");
     }
-
-    return Result.ok("OTP sent successfully");
   }
 
   private async forgotPassword(
@@ -53,8 +51,14 @@ export default class ForgotPasswordHandler {
         : await this._userRepository.findByPhoneNumber(value);
 
     if (!existingUser) {
-      Result.fail("User not found");
+      return Result.fail("User not found").withMetadata({
+        context: {
+          statusCode: 404,
+        },
+      });
     }
+
+    logger(existingUser);
 
     if (!existingUser.isVerified) {
       return Result.fail("User not verified. Please verify your account.");
@@ -82,5 +86,7 @@ export default class ForgotPasswordHandler {
     };
 
     forgotPasswordEventEmitter.emit(FORGOT_PASSWORD_EVENT, eventDetails);
+
+    return Result.ok("OTP sent successfully");
   }
 }
