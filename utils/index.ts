@@ -6,6 +6,7 @@ import {
   getOpenaiFinanceTools,
   getOpenaiFinanceAgentPrompt,
 } from "./openai-tools";
+import { AuthTokenUtils } from "./auth-token";
 import { formatTransactionsToMarkdown } from "./format";
 import { connectToDatabase, disconnectFromDatabase } from "./database";
 
@@ -19,4 +20,5 @@ export {
   disconnectFromDatabase,
   getOpenaiFinanceAgentPrompt,
   formatTransactionsToMarkdown,
+  AuthTokenUtils,
 };
