@@ -122,7 +122,7 @@ export default class InitiateSignupOtpHandler {
         userId: createdUser._id,
         token: this._authTokenUtils.generateOtpToken(),
         expiresAt: dayjs().add(1, "hour").toDate(),
-        type: TokenType.OTP,
+        type: TokenType.INITIATE_SIGNUP_OTP,
       });
 
       const initiateSignupOtpEvent: IInitiateSignupOtpEvent = {

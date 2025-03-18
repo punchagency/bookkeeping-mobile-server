@@ -16,13 +16,13 @@ export default class VerifyOtpHandler {
   private readonly _tokenRepository: TokenRepository;
 
   constructor(
-    @inject(TokenRepository.name) tokenRepository,
     @inject(UserRepository.name) userRepository,
-    @inject(AuthTokenUtils.name) authTokenUtils: AuthTokenUtils
+    @inject(AuthTokenUtils.name) authTokenUtils,
+    @inject(TokenRepository.name) tokenRepository
   ) {
     this._userRepository = userRepository;
-    this._tokenRepository = tokenRepository;
     this._authTokenUtils = authTokenUtils;
+    this._tokenRepository = tokenRepository;
   }
 
   public async handle(req: Request, res: Response) {
@@ -39,10 +39,8 @@ export default class VerifyOtpHandler {
     }
 
     if (otpExists.expiresAt < new Date()) {
-      await this._tokenRepository.deleteByUserId(
-        otpExists.userId,
-        TokenType.OTP
-      );
+      await this._tokenRepository.delete(otpExists.id);
+
       return Result.fail([{ message: "Invalid or expired token" }]);
     }
 
@@ -67,6 +65,7 @@ export default class VerifyOtpHandler {
         isPhoneVerified: true,
       });
     }
+
     await this._tokenRepository.delete(otpExists.id);
 
     const signupFlowToken = await this._tokenRepository.create({
