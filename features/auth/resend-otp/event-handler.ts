@@ -1,13 +1,14 @@
 import { container } from "tsyringe";
-import { logger, EnvConfiguration } from "../../../utils";
+
 import resendOtpEventEmitter from "./event";
+import { resendOtpContext } from "./resend-otp.dto";
+import { logger, EnvConfiguration } from "../../../utils";
 import { IResendOtpEvent, RESEND_OTP_EVENT } from "./event.dto";
 import SendgridService from "./../../../infrastructure/config/packages/sendgrid";
 import TwilioService from "../../../infrastructure/config/packages/twilio/";
-import { resendOtpContext } from "./resend-otp.dto";
 
-const envConfiguration = container.resolve(EnvConfiguration);
 const twilioService = container.resolve(TwilioService);
+const envConfiguration = container.resolve(EnvConfiguration);
 const sendgridService = container.resolve(SendgridService);
 
 resendOtpEventEmitter.on(RESEND_OTP_EVENT, async (data: IResendOtpEvent) => {
