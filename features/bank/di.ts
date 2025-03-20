@@ -2,10 +2,10 @@ import { container } from "tsyringe";
 
 import BankRoute from "./route";
 import BankController from "./controller";
-import CurrentBankHandler from "./current/handler";
+import CurrentBankHandler from "./current-connected-banks/handler";
 import ConnectBankHandler from "./connect-bank/handler";
 import DisconnectBankHandler from "./disconnect-bank/handler";
-import GetTransactionsHandler from "./get-transactions/handler";
+import GetTransactionsHandler from "./transactions/get-transactions/handler";
 
 export const registerBankDi = () => {
   container.register(BankController.name, {

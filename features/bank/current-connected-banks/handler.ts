@@ -2,9 +2,9 @@ import { Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
-import { logger } from "./../../../utils";
-import { User } from "./../../../domain/entities/user";
-import MxClient from "./../../../infrastructure/config/packages/mx";
+import { logger } from "../../../utils";
+import { User } from "../../../domain/entities/user";
+import MxClient from "../../../infrastructure/config/packages/mx";
 
 @injectable()
 export default class CurrentBankHandler {

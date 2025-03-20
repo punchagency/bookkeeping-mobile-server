@@ -32,17 +32,22 @@ export default class DisconnectBankHandler {
 
     const mxUserId = user.mxUsers[0].mxUserId;
 
-    const disconnectRequest = await this._mxClient.client.deleteMember(
-      memberGuid,
-      mxUserId
-    );
+    try {
+      const disconnectRequest = await this._mxClient.client.deleteMember(
+        memberGuid,
+        mxUserId
+      );
 
-    logger(disconnectRequest.data);
+      logger(disconnectRequest.data);
 
-    if (disconnectRequest.status !== 204) {
-      return Result.fail([{ message: "Error disconnecting bank from MX" }]);
+      if (disconnectRequest.status !== 204) {
+        return Result.fail([{ message: "Error disconnecting bank from MX" }]);
+      }
+
+      return Result.ok(disconnectRequest.data);
+    } catch (error: any) {
+      logger(error);
+      return Result.fail(`Error disconnecting bank from MX`);
     }
-
-    return Result.ok(disconnectRequest.data);
   }
 }

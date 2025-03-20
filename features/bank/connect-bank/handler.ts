@@ -23,7 +23,7 @@ export default class ConnectBankHandler {
       return Result.fail(result.errors);
     }
 
-    return Result.ok(result);
+    return Result.ok(result.value);
   }
 
   private async connectBank(userId: string) {
@@ -47,8 +47,16 @@ export default class ConnectBankHandler {
       return Result.fail([{ message: "Error creating widget in MX" }]);
     }
 
-    logger(widgetResponse.data);
+    const { url, type, user_id } = widgetResponse.data.widget_url;
 
-    return Result.ok(widgetResponse.data);
+    const dataToReturn = {
+      widgetUrl: url,
+      widgetType: type,
+      userId: user_id,
+    };
+
+    logger(dataToReturn);
+
+    return Result.ok(dataToReturn);
   }
 }

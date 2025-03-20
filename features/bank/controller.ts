@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { inject, injectable } from "tsyringe";
 
-import CurrentBankHandler from "./current/handler";
+import CurrentBankHandler from "./current-connected-banks/handler";
 import ConnectBankHandler from "./connect-bank/handler";
 import DisconnectBankHandler from "./disconnect-bank/handler";
-import GetTransactionsHandler from "./get-transactions/handler";
+import GetTransactionsHandler from "./transactions/get-transactions/handler";
 import ApiResponse from "./../../application/response/response";
 import { IApiResponse } from "./../../application/response/i-response";
 
@@ -40,7 +40,7 @@ export default class BankController {
 
     return this._apiResponse.Ok(
       res,
-      "Bank connected successfully",
+      "Bank connection request sent successfully",
       result.value
     );
   }
@@ -49,14 +49,13 @@ export default class BankController {
     const result = await this._disconnectBankHandler.handle(req, res);
 
     if (result.isFailure) {
-      return this._apiResponse.BadRequest(res, result.errors);
+      return this._apiResponse.BadRequest(
+        res,
+        result.errors.map((error) => error.message)
+      );
     }
 
-    return this._apiResponse.Ok(
-      res,
-      "Bank disconnected successfully",
-      result.value
-    );
+    return this._apiResponse.Ok(res, "Bank disconnected successfully", null);
   }
 
   public async getCurrentBank(req: Request, res: Response) {

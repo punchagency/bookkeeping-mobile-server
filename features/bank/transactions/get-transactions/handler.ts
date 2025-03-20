@@ -3,11 +3,11 @@ import { Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
-import { User } from "./../../../domain/entities/user";
+import { User } from "./../../../../domain/entities/user";
 import { getTransactionsSchema } from "./get-transaction.dto";
-import MxClient from "./../../../infrastructure/config/packages/mx";
-import { TransactionRepository } from "./../../../infrastructure/repositories/transaction/transaction-repository";
-import { ITransactionRepository } from "../../../infrastructure/repositories/transaction/i-transaction-repository";
+import MxClient from "./../../../../infrastructure/config/packages/mx";
+import { TransactionRepository } from "./../../../../infrastructure/repositories/transaction/transaction-repository";
+import { ITransactionRepository } from "../../../../infrastructure/repositories/transaction/i-transaction-repository";
 
 interface MXTransaction {
   top_level_category: string;
