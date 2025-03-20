@@ -3,6 +3,7 @@ import { Result } from "tsfluent";
 import { Request, Response } from "express";
 import { injectable, inject } from "tsyringe";
 
+import { logger } from "./../../../../utils";
 import { User } from "./../../../../domain/entities/user";
 import { getTransactionsSchema } from "./get-transaction.dto";
 import MxClient from "./../../../../infrastructure/config/packages/mx";
@@ -89,9 +90,13 @@ export default class GetTransactionsHandler {
         perPage
       );
 
+    logger(paginatedTransactionsResponse.data);
+
     if (paginatedTransactionsResponse.status !== 200) {
       return Result.fail([{ message: "Error fetching transactions from MX" }]);
     }
+
+    logger(paginatedTransactionsResponse.data);
 
     let timeRangeExpenses: TimeRangeExpenses | null = null;
     if (days) {
