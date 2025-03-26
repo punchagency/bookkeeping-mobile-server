@@ -25,6 +25,10 @@ export default class AiRoute {
       this._aiController.queryTransactions(req, res)
     );
 
+    this.router.post("/query-transactions/natural", [useAuth], (req, res) =>
+      this._aiController.queryTransactionsNatural(req, res)
+    );
+
     this.router.post("/visualize-transactions", [useAuth], (req, res) =>
       this._aiController.visualizeTransactions(req, res)
     );

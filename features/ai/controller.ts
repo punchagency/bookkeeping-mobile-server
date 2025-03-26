@@ -55,6 +55,10 @@ export default class AiController {
     );
   }
 
+  public async queryTransactionsNatural(req: Request, res: Response) {
+    await this._queryTransactionHandler.handleNaturalLanguageQuery(req, res);
+  }
+
   public async visualizeTransactions(req: Request, res: Response) {
     const result = await this._visualizeTransactionsHandler.handle(req, res);
 

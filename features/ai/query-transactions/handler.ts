@@ -39,94 +39,186 @@ export default class QueryTransactionHandler {
   }
 
   public async handle(req: Request, res: Response) {
-    const currentUser = req.user as User;
     const values = await queryTransactionsDto.validateAsync(req.body);
+    const currentUser = req.user as User;
 
-    const result = await ResultAsync.okAsync();
+    const result = await this.handleNaturalLanguageQuery(
+      values.query,
+      currentUser
+    );
 
-    // const financeAgentResponse = await financeAgent.generate(values.query);
-
-    // logger(financeAgentResponse);
-    const response = await axios.post("http://localhost:9000/finance-query", {
-      query: values.query,
-    });
-
-    logger(response.data);
-
-    if (result.isSuccess) {
-      return Result.ok(response.data.data);
+    if (!result.isSuccess) {
+      return res.status(400).json({
+        message: result.errors,
+      });
     }
 
-    logger(result.errors);
-    return Result.fail(result.errors);
+    return res.status(200).json({
+      data: result.value,
+    });
   }
 
-  private async queryTransactions(query: string, user: User) {
-    const cachedCustomQueryTransactions =
-      await this.getCachedCustomQueryTransactions(user, query);
+  public async handleNaturalLanguageQuery(query: string, user: User) {
+    try {
+      const queryCacheKey = `transactions_query:${
+        user._id
+      }:${query.toLowerCase()}`;
+      const queryResult = await this._redisService.get(queryCacheKey);
 
-    if (cachedCustomQueryTransactions) {
-      return Result.ok(cachedCustomQueryTransactions);
-    }
+      logger("Cache Check:", {
+        key: queryCacheKey,
+        hasCache: !!queryResult,
+        query: query,
+      });
 
-    const { cachedTransactions, markdownTransactions } =
-      await this.getCachedTransactions(user);
+      if (queryResult) {
+        logger("Returning cached result for query:", query);
+        return Result.ok(queryResult);
+      }
 
-    // Check if user's transactions are already in Pinecone
-    const pineconeIndex = this._pineconeClient.client.index(
-      this._envConfig.PINECONE_INDEX_NAME
-    );
+      const redisQuery =
+        await this._openAiClient.generateRedisQueryFromNaturalLanguage(query);
 
-    const existingVector = await pineconeIndex.fetch([user._id.toString()]);
+      logger("Natural Language Query:", query);
+      logger("Generated Redis Query:", redisQuery);
 
-    if (!existingVector?.records?.[user._id.toString()]) {
-      // Only convert and upsert if not already in Pinecone
-      const openAiVectorEmbeddings = await this._openAiClient.createEmbedding(
-        cachedTransactions as string
+      const cachedTransactions = await this.getCachedTransactions(user);
+      logger("Cached Transactions:", cachedTransactions);
+
+      if (
+        !cachedTransactions ||
+        (Array.isArray(cachedTransactions) && cachedTransactions.length === 0)
+      ) {
+        return Result.fail("No transactions found for user");
+      }
+
+      const transactions = Array.isArray(cachedTransactions)
+        ? cachedTransactions
+        : JSON.parse(cachedTransactions as string);
+
+      logger("Parsed Transactions:", transactions);
+
+      const filteredTransactions = transactions.filter((transaction: any) => {
+        try {
+          // Create a safe transaction object with null checks for string operations
+          const safeTransaction = {
+            ...transaction,
+            description: (transaction.description || "").toLowerCase(),
+            originalDescription: (
+              transaction.originalDescription || ""
+            ).toLowerCase(),
+            topLevelCategory: (
+              transaction.topLevelCategory || ""
+            ).toLowerCase(),
+            memo: (transaction.memo || "").toLowerCase(),
+            date: transaction.date || "",
+            amount: transaction.amount || 0,
+            isIncome: !!transaction.isIncome,
+            isExpense: !!transaction.isExpense,
+            // Add helper functions for more lenient matching
+            containsInAnyField: function (searchTerm: string) {
+              searchTerm = searchTerm.toLowerCase();
+              // Handle plural/singular forms
+              const searchTerms = [
+                searchTerm,
+                searchTerm.endsWith("s")
+                  ? searchTerm.slice(0, -1)
+                  : searchTerm + "s",
+              ];
+
+              return searchTerms.some(
+                (term) =>
+                  this.description.includes(term) ||
+                  this.originalDescription.includes(term) ||
+                  this.topLevelCategory.includes(term) ||
+                  this.memo.includes(term)
+              );
+            },
+            matchesCategory: function (category: string) {
+              category = category.toLowerCase();
+              return this.topLevelCategory.includes(category);
+            },
+          };
+
+          logger("Evaluating transaction:", {
+            description: safeTransaction.description,
+            isIncome: safeTransaction.isIncome,
+            isExpense: safeTransaction.isExpense,
+            query: redisQuery,
+          });
+
+          const evaluateQuery = new Function(
+            "transaction",
+            `
+            try {
+              const searchTerm = '${query}'.toLowerCase();
+              const result = ${redisQuery};
+              if (result) return true;
+              
+              // Fallback matching for income/expense keywords
+              if (searchTerm.includes('income') && transaction.isIncome) return true;
+              if (searchTerm.includes('expense') && transaction.isExpense) return true;
+              
+              // Handle plural/singular forms in fallback matching
+              const searchTerms = [
+                searchTerm,
+                searchTerm.endsWith('s') ? searchTerm.slice(0, -1) : searchTerm + 's'
+              ];
+              
+              // Fallback for text matching with plural/singular handling
+              return searchTerms.some(term => 
+                transaction.containsInAnyField(term) ||
+                transaction.description.includes(term) ||
+                transaction.topLevelCategory.includes(term) ||
+                transaction.memo.includes(term)
+              );
+            } catch (e) {
+              console.error('Query evaluation error:', e);
+              // If query fails, try basic matching with plural/singular handling
+              const searchTerm = '${query}'.toLowerCase();
+              return transaction.containsInAnyField(searchTerm);
+            }
+          `
+          );
+
+          const result = evaluateQuery(safeTransaction);
+
+          logger("Transaction Filter Result:", {
+            transaction: safeTransaction.description,
+            query: redisQuery,
+            result: result,
+          });
+
+          return result;
+        } catch (error) {
+          logger("Error filtering transaction:", error);
+          // If all else fails, try basic text matching
+          const searchTerm = query.toLowerCase();
+          return Object.values(transaction)
+            .filter((val) => typeof val === "string")
+            .some((val) => val.toString().toLowerCase().includes(searchTerm));
+        }
+      });
+
+      logger("Filtered Transactions:", filteredTransactions);
+
+      if (filteredTransactions.length === 0) {
+        return Result.fail("No transactions match your query criteria");
+      }
+
+      await this._redisService.set(
+        queryCacheKey,
+        filteredTransactions,
+        60 * 15
       );
 
-      logger(openAiVectorEmbeddings);
-
-      await pineconeIndex.upsert([
-        {
-          id: user._id.toString(),
-          values: openAiVectorEmbeddings,
-          metadata: {
-            summary: markdownTransactions.toString(),
-          },
-        },
-      ]);
-      logger(`Upserted ${user._id} into Pinecone`);
+      return Result.ok(filteredTransactions);
+    } catch (error: any) {
+      logger(error);
+      return Result.fail(
+        error.message || "Failed to process natural language query"
+      );
     }
-
-    // Convert user query to vector embedding
-    const queryEmbedding = await this._openAiClient.createEmbedding(query);
-
-    // Search Pinecone for similar transactions
-    console.log("queryEmbedding");
-    logger(queryEmbedding);
-    const searchResponse = await pineconeIndex.query({
-      vector: queryEmbedding,
-      filter: { id: user._id.toString() },
-      topK: 1,
-    });
-
-    logger(searchResponse);
-
-    if (!searchResponse.matches?.length) {
-      logger("No matching transactions found");
-      return Result.fail("No matching transactions found");
-    }
-
-    // Cache the query results
-    const queryCacheKey = `transactions_query:${user._id}:${query}`;
-    await this._redisService.set(
-      queryCacheKey,
-      searchResponse.matches[0].metadata.summary,
-      60 * 15
-    );
-
-    return Result.ok(searchResponse.matches[0]);
   }
 
   private async getCachedTransactions(user: User) {
@@ -136,182 +228,237 @@ export default class QueryTransactionHandler {
       allTransactionsCacheKey
     );
 
-    let markdownTransactions = null;
+    logger("Initial Redis Check:", {
+      hasCachedTransactions: !!cachedTransactions,
+      cacheKey: allTransactionsCacheKey,
+    });
 
     if (!cachedTransactions) {
       logger(`No cached transactions found for ${user.firstName}`);
 
-      const mxUserId = user.mxUsers[0].mxUserId;
-
-      const countResponse = await this._mxClient.client.listTransactions(
-        mxUserId,
-        undefined,
-        1,
-        1
-      );
-
-      const totalTransactions = countResponse.data.pagination.total_entries;
-      const totalPages = Math.ceil(totalTransactions / 1000);
-
-      let allTransactions: any[] = [];
-      for (let page = 1; page <= totalPages; page++) {
-        const batchResponse = await this._mxClient.client.listTransactions(
-          mxUserId,
-          undefined,
-          page,
-          1000
-        );
-        allTransactions = [
-          ...allTransactions,
-          ...batchResponse.data.transactions,
-        ];
-      }
-
-      const totals = allTransactions.reduce(
-        (acc, t) => {
-          if (t.is_income) acc.totalIncome += Number(t.amount);
-          if (t.is_expense) acc.totalExpenses += Number(t.amount);
-          acc.categories[t.top_level_category] =
-            (acc.categories[t.top_level_category] || 0) + t.amount;
-          acc.merchantFrequency[t.description] =
-            (acc.merchantFrequency[t.description] || 0) + 1;
-          if (t.amount > (acc.highestTransaction?.amount || 0)) {
-            acc.highestTransaction = {
-              amount: t.amount,
-              description: t.description,
-              category: t.top_level_category,
-            };
-          }
-          return acc;
+      // Test transactions for development
+      const testTransactions = [
+        // Income transactions
+        {
+          isIncome: true,
+          isExpense: false,
+          amount: 3000.0,
+          description: "Salary Deposit",
+          originalDescription: "DIRECT DEPOSIT SALARY",
+          topLevelCategory: "Income",
+          date: "2024-03-24",
+          memo: "Monthly salary",
         },
         {
-          totalIncome: 0,
-          totalExpenses: 0,
-          netChange: 0,
-          categories: {},
-          merchantFrequency: {},
-          highestTransaction: null,
-        }
-      );
-
-      const formattedTotals = {
-        income: Number(totals.totalIncome.toFixed(2)),
-        expenses: Number(totals.totalExpenses.toFixed(2)),
-        netChange: Number(totals.totalIncome - totals.totalExpenses),
-      };
-
-      const transformedTransactions = allTransactions.map((t) => ({
-        isIncome: t.is_income,
-        isExpense: t.is_expense,
-        amount: Number(t.amount),
-        description: t.description,
-        originalDescription: t.original_description,
-        topLevelCategory: t.top_level_category,
-        date: t.date,
-        memo: t.memo,
-      }));
-
-      const transactionSummary = transformedTransactions.reduce(
-        (summary, t) => {
-          const month = new Date(t.date).toLocaleString("default", {
-            month: "long",
-          });
-          if (!summary[month]) {
-            summary[month] = {
-              income: 0,
-              expenses: 0,
-              transactions: [],
-              topCategories: new Map(),
-              categoryTotals: new Map(),
-              merchantTotals: new Map(),
-              recurringExpenses: new Map(),
-              largestExpenses: [],
-            };
-          }
-
-          if (t.isIncome) summary[month].income += t.amount;
-          if (t.isExpense) summary[month].expenses += t.amount;
-
-          const descriptionKey = t.description.toLowerCase().trim();
-          const merchantTotal =
-            summary[month].merchantTotals.get(descriptionKey) || 0;
-          summary[month].merchantTotals.set(
-            descriptionKey,
-            merchantTotal + t.amount
-          );
-
-          const categoryTotal =
-            summary[month].categoryTotals.get(t.topLevelCategory) || 0;
-          summary[month].categoryTotals.set(
-            t.topLevelCategory,
-            categoryTotal + t.amount
-          );
-
-          const currentCount =
-            summary[month].topCategories.get(t.topLevelCategory) || 0;
-          summary[month].topCategories.set(
-            t.topLevelCategory,
-            currentCount + 1
-          );
-
-          if (t.isExpense) {
-            summary[month].transactions.push({
-              description: t.description,
-              originalDescription: t.originalDescription,
-              amount: t.amount,
-              category: t.topLevelCategory,
-              date: t.date,
-            });
-
-            if (
-              summary[month].transactions.some(
-                (tr) =>
-                  tr.description !== t.description &&
-                  tr.description.toLowerCase().includes(descriptionKey)
-              )
-            ) {
-              summary[month].recurringExpenses.set(descriptionKey, {
-                amount: t.amount,
-                category: t.topLevelCategory,
-                frequency: "monthly",
-              });
-            }
-          }
-
-          return summary;
+          isIncome: true,
+          isExpense: false,
+          amount: 500.0,
+          description: "Freelance Payment",
+          originalDescription: "PAYPAL TRANSFER",
+          topLevelCategory: "Income",
+          date: "2024-03-20",
+          memo: "Website development project",
         },
-        {}
-      );
+        {
+          isIncome: true,
+          isExpense: false,
+          amount: 100.0,
+          description: "Investment Dividend",
+          originalDescription: "VANGUARD DIV",
+          topLevelCategory: "Income",
+          date: "2024-03-15",
+          memo: "Quarterly dividend payment",
+        },
 
-      const dataToSave = {
-        totals: formattedTotals,
-        transactions: transactionSummary,
-      };
+        // Food & Dining
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 150.5,
+          description: "Walmart Groceries",
+          originalDescription: "WALMART GROCERY",
+          topLevelCategory: "Food & Dining",
+          date: "2024-03-24",
+          memo: "Weekly groceries",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 85.75,
+          description: "Restaurant Dinner",
+          originalDescription: "OLIVE GARDEN",
+          topLevelCategory: "Food & Dining",
+          date: "2024-03-22",
+          memo: "Family dinner",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 25.4,
+          description: "Starbucks Coffee",
+          originalDescription: "STARBUCKS",
+          topLevelCategory: "Food & Dining",
+          date: "2024-03-23",
+          memo: "Coffee and breakfast",
+        },
 
-      cachedTransactions = formatTransactionsToMarkdown(dataToSave);
+        // Entertainment & Subscriptions
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 25.0,
+          description: "Netflix Subscription",
+          originalDescription: "NETFLIX.COM",
+          topLevelCategory: "Entertainment",
+          date: "2024-03-23",
+          memo: "Monthly subscription",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 9.99,
+          description: "Spotify Premium",
+          originalDescription: "SPOTIFY.COM",
+          topLevelCategory: "Entertainment",
+          date: "2024-03-21",
+          memo: "Monthly music subscription",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 15.0,
+          description: "HBO Max",
+          originalDescription: "HBO MAX",
+          topLevelCategory: "Entertainment",
+          date: "2024-03-20",
+          memo: "Streaming service",
+        },
 
-      markdownTransactions = formatTransactionsToMarkdown(dataToSave);
+        // Loans & Mortgage
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 500.0,
+          description: "Car Loan Payment",
+          originalDescription: "AUTO LOAN PAYMENT",
+          topLevelCategory: "Loans",
+          date: "2024-03-24",
+          memo: "Monthly car loan payment",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 1200.0,
+          description: "Mortgage Payment",
+          originalDescription: "MORTGAGE PAYMENT",
+          topLevelCategory: "Loans",
+          date: "2024-03-24",
+          memo: "Monthly mortgage payment",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 75.0,
+          description: "Student Loan Payment",
+          originalDescription: "STUDENT LOAN PAYMENT",
+          topLevelCategory: "Loans",
+          date: "2024-03-24",
+          memo: "Monthly student loan payment",
+        },
 
-      logger(markdownTransactions);
+        // Utilities & Bills
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 80.0,
+          description: "Electric Bill",
+          originalDescription: "ELECTRIC COMPANY",
+          topLevelCategory: "Utilities",
+          date: "2024-03-24",
+          memo: "Monthly electric bill",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 60.0,
+          description: "Phone Bill",
+          originalDescription: "PHONE COMPANY",
+          topLevelCategory: "Utilities",
+          date: "2024-03-24",
+          memo: "Monthly phone bill",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 45.0,
+          description: "Internet Service",
+          originalDescription: "COMCAST",
+          topLevelCategory: "Utilities",
+          date: "2024-03-22",
+          memo: "Monthly internet",
+        },
+
+        // Shopping & Retail
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 120.0,
+          description: "Amazon Purchase",
+          originalDescription: "AMAZON.COM",
+          topLevelCategory: "Shopping",
+          date: "2024-03-21",
+          memo: "Home supplies",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 75.5,
+          description: "Target Shopping",
+          originalDescription: "TARGET",
+          topLevelCategory: "Shopping",
+          date: "2024-03-19",
+          memo: "Household items",
+        },
+
+        // Transportation
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 45.0,
+          description: "Gas Station",
+          originalDescription: "SHELL OIL",
+          topLevelCategory: "Transportation",
+          date: "2024-03-23",
+          memo: "Fuel",
+        },
+        {
+          isIncome: false,
+          isExpense: true,
+          amount: 150.0,
+          description: "Car Insurance",
+          originalDescription: "GEICO",
+          topLevelCategory: "Insurance",
+          date: "2024-03-15",
+          memo: "Monthly auto insurance",
+        },
+      ];
+
+      logger("Using test transactions:", testTransactions);
 
       await this._redisService.set(
         allTransactionsCacheKey,
-        cachedTransactions,
+        testTransactions,
         60 * 60 * 24
       );
+
+      return testTransactions;
     }
 
-    return { cachedTransactions, markdownTransactions };
-  }
-
-  private async getCachedCustomQueryTransactions(user: User, query: string) {
-    const queryCacheKey = `transactions_query:${user._id}:${query}`;
-
-    const cachedTransactions = await this._redisService.get(queryCacheKey);
-
-    if (!cachedTransactions) {
-      logger(`No cached custom query transactions found for ${user.firstName}`);
-    }
+    logger("Returning cached transactions:", {
+      count: Array.isArray(cachedTransactions)
+        ? cachedTransactions.length
+        : "unknown",
+    });
 
     return cachedTransactions;
   }
